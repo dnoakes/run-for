@@ -210,39 +210,49 @@ export async function syncAndAutoPledge(activitiesList: any[]) {
 }
 
 export async function getPledgeHistory() {
-    const session = await auth();
-    if (!session?.user?.id) return [];
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return [];
 
-    const history = await db.query.ledger.findMany({
-        where: eq(ledger.userId, session.user.id),
-        with: {
-            activity: true,
-            cause: true,
-        },
-        orderBy: (ledger: any, { desc }: any) => [desc(ledger.createdAt)],
-    });
+        const history = await db.query.ledger.findMany({
+            where: eq(ledger.userId, session.user.id),
+            with: {
+                activity: true,
+                cause: true,
+            },
+            orderBy: (ledger: any, { desc }: any) => [desc(ledger.appliedAt)],
+        });
 
-    return history;
+        return history;
+    } catch (e) {
+        console.error("Failed to fetch pledge history:", e);
+        return [];
+    }
 }
 
 export async function getUserImpactSummary() {
-    const session = await auth();
-    if (!session?.user?.id) return [];
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return [];
 
-    // Aggregation in Drizzle D1 can be tricky with `db.query`.
-    // We'll use raw SQL or query builder for aggregation.
-    // Let's use the query builder with `groupBy`.
+        // Aggregation in Drizzle D1 can be tricky with `db.query`.
+        // We'll use raw SQL or query builder for aggregation.
+        // Let's use the query builder with `groupBy`.
 
-    const summary = await db
-        .select({
-            causeId: ledger.causeId,
-            causeTitle: causes.title,
-            totalMiles: sql<number>`sum(${ledger.milesApplied})`,
-        })
-        .from(ledger)
-        .leftJoin(causes, eq(ledger.causeId, causes.id))
-        .where(eq(ledger.userId, session.user.id))
-        .groupBy(ledger.causeId, causes.title);
+        const summary = await db
+            .select({
+                causeId: ledger.causeId,
+                causeTitle: causes.title,
+                totalMiles: sql<number>`sum(${ledger.milesApplied})`,
+            })
+            .from(ledger)
+            .leftJoin(causes, eq(ledger.causeId, causes.id))
+            .where(eq(ledger.userId, session.user.id))
+            .groupBy(ledger.causeId, causes.title);
 
-    return summary;
+        return summary;
+    } catch (e) {
+        console.error("Failed to fetch impact summary:", e);
+        return [];
+    }
 }
