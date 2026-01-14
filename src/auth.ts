@@ -1,7 +1,15 @@
 import NextAuth from "next-auth"
 import Strava from "next-auth/providers/strava"
+import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { db, users, accounts, sessions, verificationTokens } from "./db"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    adapter: DrizzleAdapter(db, {
+        usersTable: users,
+        accountsTable: accounts,
+        sessionsTable: sessions,
+        verificationTokensTable: verificationTokens,
+    }),
     providers: [
         Strava({
             clientId: process.env.STRAVA_CLIENT_ID,
@@ -33,12 +41,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 accessToken: token.accessToken,
                 refreshToken: token.refreshToken,
             }
-            console.log("✅ Strava Session Verified:", {
-                user: newSession.user?.name,
-                hasAccessToken: !!newSession.accessToken,
-                hasRefreshToken: !!newSession.refreshToken
-            })
             return newSession
         },
     },
+    debug: true,
 })
