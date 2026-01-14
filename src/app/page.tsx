@@ -50,6 +50,7 @@ export default async function Home() {
       rules: rules,
       history: history,
       summary: summary,
+      totalFetched: activities.length,
     };
   }
 
@@ -90,7 +91,12 @@ export default async function Home() {
                   causes={dashboardData.causes}
                   initialRules={dashboardData.rules}
                   history={dashboardData.history}
+                  initialRules={dashboardData.rules}
+                  history={dashboardData.history}
                   summary={dashboardData.summary}
+                  totalFetched={dashboardData.activities?.length || 0} // This is the UNFILTERED list length from getRecentActivities if I pass it? No, activities IS unpledged.
+                // Wait, I filtered 'activities' in page.tsx above.
+                // I need to change dashboardData structure or pass the raw count.
                 />
               )
             )}

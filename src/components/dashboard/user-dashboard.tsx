@@ -49,6 +49,7 @@ export function UserDashboard({
     initialRules: any[];
     history: any[];
     summary: any[];
+    totalFetched: number;
 }) {
     const [unpledged, setUnpledged] = useState(activities);
     const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(
@@ -56,6 +57,10 @@ export function UserDashboard({
     );
     const [isPledging, setPledging] = useState(false);
     const router = useRouter();
+
+    useEffect(() => {
+        setUnpledged(activities);
+    }, [activities]);
 
     useEffect(() => {
         const runAutoPledge = async () => {
@@ -131,6 +136,9 @@ export function UserDashboard({
                         <h4 className="text-lg font-semibold flex items-center gap-2">
                             <Activity className="text-primary" size={20} />
                             Unpledged Runs
+                            <span className="text-xs text-muted-foreground font-normal ml-2">
+                                (Fetched {totalFetched} from Strava)
+                            </span>
                         </h4>
                     </div>
 
