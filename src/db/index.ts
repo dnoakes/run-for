@@ -12,11 +12,24 @@ if (process.env.NODE_ENV === "production" || isEdge) {
     if (process.env.run_for_db) {
         db = drizzleD1(process.env.run_for_db as any, { schema });
     } else {
-        // Fallback or error if D1 binding missing in Edge
-        // For local dev with Edge runtime, we might need a proxy or mock if bindings aren't set up via next-on-pages proxy
-        // But usually locally we want better-sqlite3 unless specifically testing edge.
-        // However, 'better-sqlite3' crashes Edge.
-        console.warn("⚠️ D1 Binding 'run_for_db' not found in Edge environment. DB calls may fail.");
+        // Fallback for Build Time (Bindings are not available during build)
+        // We provide a mock D1 database to allow static analysis/initialization to proceed without crashing.
+        console.warn("⚠️ D1 Binding 'run_for_db' not found. Using Mock DB for build/edge-initialization.");
+
+        const mockD1 = {
+            prepare: () => ({
+                bind: () => ({
+                    all: async () => [],
+                    first: async () => null,
+                    run: async () => ({ meta: {}, results: [], success: true }),
+                }),
+            }),
+            batch: async () => [],
+            dump: async () => new ArrayBuffer(0),
+            exec: async () => { },
+        };
+
+        db = drizzleD1(mockD1 as any, { schema });
     }
 } else {
     // Local Development (Node.js)
