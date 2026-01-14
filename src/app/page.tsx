@@ -1,10 +1,31 @@
-"use client";
-
 import { motion } from "framer-motion";
-import { Link2, Heart, Share2, ArrowRight } from "lucide-react";
+import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react";
 import { SignInButton } from "@/components/auth/signin-button";
+import { auth, signOut } from "@/auth";
 
-export default function Home() {
+async function getLatestActivity(accessToken: string) {
+  try {
+    const res = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=1", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const activities = await res.json();
+    return activities[0] || null;
+  } catch (e) {
+    console.error("Failed to fetch Strava activity:", e);
+    return null;
+  }
+}
+
+export default async function Home() {
+  const session = await auth();
+  let latestActivity: any = null;
+
+  if (session?.accessToken) {
+    latestActivity = await getLatestActivity(session.accessToken as string);
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center bg-background text-foreground overflow-x-hidden">
       {/* Hero Section */}
@@ -13,40 +34,78 @@ export default function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-background to-background pointer-events-none" />
 
         {/* Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="z-10 max-w-4xl space-y-6"
-        >
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-blue-500">
+        {/* We need a Client Component wrapper for motion if we want animation on server content, 
+            but for now we'll keep it simple or accept that we might lose some entry animation strictly on the text 
+            if we don't extract it. Actually, we can mix them. 
+            However, to keep this file a Server Component, we can't export a default that is 'use client'.
+            We will remove 'use client' from top and make motion components separate or just standard HTML for the dashboard part.
+        */}
+
+        <div className="z-10 max-w-4xl space-y-6">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-blue-500 animate-in fade-in slide-in-from-bottom-4 duration-1000">
             Make Every Mile <br className="hidden md:block" />
             <span className="text-primary">Meaningful.</span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-1000 delay-200">
             Turn your Strava runs into awareness for the causes you love.
             <span className="block mt-2 font-medium text-foreground">No money, just sweat.</span>
           </p>
 
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="pt-8"
-          >
-            <SignInButton />
-          </motion.div>
-        </motion.div>
+          <div className="pt-8 flex justify-center animate-in fade-in zoom-in duration-500 delay-500">
+            {!session ? (
+              <SignInButton />
+            ) : (
+              <div className="bg-background/80 backdrop-blur-md border border-primary/20 p-6 rounded-2xl max-w-md w-full shadow-2xl shadow-primary/10">
+                <div className="flex items-center gap-4 mb-6">
+                  {session.user?.image && (
+                    <img src={session.user.image} alt={session.user.name || "User"} className="w-16 h-16 rounded-full border-2 border-primary" />
+                  )}
+                  <div className="text-left">
+                    <p className="text-sm text-muted-foreground">Welcome back,</p>
+                    <h3 className="text-xl font-bold text-foreground">{session.user?.name}</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-muted/50 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
+                        <Activity size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Latest Activity</p>
+                        <p className="font-medium">
+                          {latestActivity ? latestActivity.name : "No recent activity found"}
+                        </p>
+                      </div>
+                    </div>
+                    {latestActivity && (
+                      <div className="text-right">
+                        <p className="text-lg font-bold">{(latestActivity.distance / 1609.34).toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">miles</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <form action={async () => {
+                  "use server"
+                  await signOut()
+                }}>
+                  <button className="mt-6 text-sm text-muted-foreground hover:text-red-400 flex items-center gap-2 mx-auto transition-colors">
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Scroll Indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-10 animate-bounce text-muted-foreground"
-        >
+        <div className="absolute bottom-10 animate-bounce text-muted-foreground">
           <p className="text-sm uppercase tracking-widest">Scroll to explore</p>
-        </motion.div>
+        </div>
       </section>
 
       {/* How It Works Section */}
@@ -63,12 +122,8 @@ export default function Home() {
               { icon: Heart, title: "Choose a Cause", text: "Select a personal or public cause to dedicate your miles to." },
               { icon: Share2, title: "Share Impact", text: "Get a custom 'Dedication Card' to share and spread awareness." },
             ].map((step, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.2 }}
                 className="bg-background/50 border border-white/5 p-8 rounded-2xl flex flex-col items-center text-center space-y-4 hover:border-primary/50 transition-colors"
               >
                 <div className="p-4 bg-primary/10 rounded-full text-primary">
@@ -76,7 +131,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold">{step.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{step.text}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -103,10 +158,9 @@ export default function Home() {
               { title: "Save Our Forests", distance: "8,920 miles", color: "from-green-500 to-emerald-700" },
               { title: "Local Animal Shelter", distance: "3,100 miles", color: "from-orange-400 to-red-500" },
             ].map((cause, i) => (
-              <motion.div
+              <div
                 key={i}
-                whileHover={{ y: -5 }}
-                className="min-w-[300px] md:min-w-[350px] snap-start bg-muted rounded-xl overflow-hidden group cursor-pointer"
+                className="min-w-[300px] md:min-w-[350px] snap-start bg-muted rounded-xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"
               >
                 <div className={`h-40 w-full bg-gradient-to-br ${cause.color} relative p-6 flex items-end`}>
                   <div className="absolute top-4 right-4 bg-black/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white/90">
@@ -128,7 +182,7 @@ export default function Home() {
                     Run for this
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

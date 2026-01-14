@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm"
+
 import NextAuth from "next-auth"
 import Strava from "next-auth/providers/strava"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
@@ -22,26 +24,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
         }),
     ],
+    // Remove the unused jwt callback entirely since we are using database strategy
     callbacks: {
-        async jwt({ token, account }) {
-            // Persist the OAuth access_token and refresh_token to the token right after signin
-            if (account) {
-                token.accessToken = account.access_token
-                token.refreshToken = account.refresh_token
-                token.expiresAt = account.expires_at
-            }
-            return token
-        },
-        async session({ session, token }) {
-            // Send properties to the client, like an access_token and user id from a provider.
-            // Note: In a real app we might not want to expose tokens to the client, 
-            // but for this "Blocker Check" MVP we need to verify we have them.
-            const newSession = {
+        async session({ session, user }) {
+            // Fetch the account to get the access_token
+            // In a production app, verify if you should expose this.
+            // For this app, we need it for the frontend/server-component API calls.
+
+            // We need to query the accounts table. 
+            // Since we are inside the auth config, we can use the 'db' instance.
+            const account = await db.query.accounts.findFirst({
+                where: eq(accounts.userId, user.id)
+            })
+
+            return {
                 ...session,
-                accessToken: token.accessToken,
-                refreshToken: token.refreshToken,
+                accessToken: account?.access_token,
+                refreshToken: account?.refresh_token,
             }
-            return newSession
         },
     },
     debug: true,
