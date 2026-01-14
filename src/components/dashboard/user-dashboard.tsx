@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImpactSummary } from "./impact-summary";
 import { PledgeHistory } from "./pledge-history";
+import { SignOutButton } from "@/components/auth/signout-button";
 
 interface Cause {
     id: string;
@@ -102,7 +103,10 @@ export function UserDashboard({
                         <h3 className="text-xl font-bold text-foreground">{user.name}</h3>
                     </div>
                 </div>
-                <PledgeSettings causes={causes} initialRules={initialRules} />
+                <div className="flex items-center gap-2">
+                    <PledgeSettings causes={causes} initialRules={initialRules} />
+                    <SignOutButton />
+                </div>
             </div>
 
             <ImpactSummary summary={summary} />
