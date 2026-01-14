@@ -1,7 +1,7 @@
 "use client";
 
-import { Activity, Heart } from "lucide-react";
-import { useState } from "react";
+import { Activity, Heart, History, ListTodo } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -13,8 +13,10 @@ import {
 import { pledgeActivity, syncAndAutoPledge } from "@/app/actions";
 import { motion } from "framer-motion";
 import { PledgeSettings } from "./pledge-settings";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImpactSummary } from "./impact-summary";
+import { PledgeHistory } from "./pledge-history";
 
 interface Cause {
     id: string;
@@ -37,11 +39,15 @@ export function UserDashboard({
     activities,
     causes,
     initialRules,
+    history,
+    summary,
 }: {
     user: any;
     activities: StravaActivity[];
     causes: Cause[];
     initialRules: any[];
+    history: any[];
+    summary: any[];
 }) {
     const [unpledged, setUnpledged] = useState(activities);
     const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(
@@ -71,6 +77,7 @@ export function UserDashboard({
             // Remove from list locally for instant feedback
             setUnpledged((prev) => prev.filter((a) => a.id !== selectedActivity.id));
             setSelectedActivity(null);
+            router.refresh(); // Refresh to update history/summary
         } catch (e) {
             console.error(e);
             alert("Failed to pledge. Try again.");
@@ -98,87 +105,106 @@ export function UserDashboard({
                 <PledgeSettings causes={causes} initialRules={initialRules} />
             </div>
 
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-lg font-semibold flex items-center gap-2">
-                        <Activity className="text-primary" size={20} />
-                        Unpledged Runs
-                    </h4>
-                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                        {unpledged.length} found
-                    </span>
-                </div>
+            <ImpactSummary summary={summary} />
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
-                    {unpledged.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <p>All caught up! Go for a run. 🏃‍♂️</p>
-                        </div>
-                    ) : (
-                        unpledged.map((activity) => (
-                            <motion.div
-                                key={activity.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-muted/30 p-4 rounded-xl flex items-center justify-between group hover:bg-muted/50 transition-colors"
-                            >
-                                <div>
-                                    <p className="font-medium truncate max-w-[200px]">
-                                        {activity.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {new Date(activity.start_date).toLocaleDateString()} •{" "}
-                                        {(activity.distance * 0.000621371).toFixed(2)} mi
-                                    </p>
-                                </div>
+            <Tabs defaultValue="runs" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="runs" className="flex items-center gap-2">
+                        <ListTodo size={16} /> Needed Action
+                        {unpledged.length > 0 && (
+                            <span className="ml-2 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                                {unpledged.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="flex items-center gap-2">
+                        <History size={16} /> History
+                    </TabsTrigger>
+                </TabsList>
 
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => setSelectedActivity(activity)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            Pledge
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-md">
-                                        <DialogHeader>
-                                            <DialogTitle>Pledge this run</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="grid gap-4 py-4">
-                                            <p className="text-sm text-muted-foreground">
-                                                Select a cause to dedicate your{" "}
-                                                <span className="font-bold text-foreground">
-                                                    {(activity.distance * 0.000621371).toFixed(2)} miles
-                                                </span>{" "}
-                                                to.
-                                            </p>
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {causes.map((cause) => (
-                                                    <button
-                                                        key={cause.id}
-                                                        onClick={() => handlePledge(cause.id)}
-                                                        disabled={isPledging}
-                                                        className="flex items-center justify-between p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-all text-left group/btn"
-                                                    >
-                                                        <span className="font-medium">{cause.title}</span>
-                                                        <Heart
-                                                            size={16}
-                                                            className="text-muted-foreground group-hover/btn:text-primary"
-                                                        />
-                                                    </button>
-                                                ))}
+                <TabsContent value="runs" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2">
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-lg font-semibold flex items-center gap-2">
+                            <Activity className="text-primary" size={20} />
+                            Unpledged Runs
+                        </h4>
+                    </div>
+
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                        {unpledged.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                                <p>All caught up! Go for a run. 🏃‍♂️</p>
+                            </div>
+                        ) : (
+                            unpledged.map((activity) => (
+                                <motion.div
+                                    key={activity.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-muted/30 p-4 rounded-xl flex items-center justify-between group hover:bg-muted/50 transition-colors"
+                                >
+                                    <div>
+                                        <p className="font-medium truncate max-w-[200px]">
+                                            {activity.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {new Date(activity.start_date).toLocaleDateString()} •{" "}
+                                            {(activity.distance * 0.000621371).toFixed(2)} mi
+                                        </p>
+                                    </div>
+
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setSelectedActivity(activity)}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                Pledge
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Pledge this run</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <p className="text-sm text-muted-foreground">
+                                                    Select a cause to dedicate your{" "}
+                                                    <span className="font-bold text-foreground">
+                                                        {(activity.distance * 0.000621371).toFixed(2)} miles
+                                                    </span>{" "}
+                                                    to.
+                                                </p>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {causes.map((cause) => (
+                                                        <button
+                                                            key={cause.id}
+                                                            onClick={() => handlePledge(cause.id)}
+                                                            disabled={isPledging}
+                                                            className="flex items-center justify-between p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-all text-left group/btn"
+                                                        >
+                                                            <span className="font-medium">{cause.title}</span>
+                                                            <Heart
+                                                                size={16}
+                                                                className="text-muted-foreground group-hover/btn:text-primary"
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            </motion.div>
-                        ))
-                    )}
-                </div>
-            </div>
+                                        </DialogContent>
+                                    </Dialog>
+                                </motion.div>
+                            ))
+                        )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="history" className="animate-in fade-in-50 slide-in-from-bottom-2">
+                    <PledgeHistory history={history} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

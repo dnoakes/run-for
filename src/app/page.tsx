@@ -5,7 +5,7 @@ import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react
 import { SignInButton } from "@/components/auth/signin-button";
 import { auth, signOut } from "@/auth";
 
-import { getGlobalCauses, getPledgedActivityIds, getPledgeRules } from "@/app/actions";
+import { getGlobalCauses, getPledgedActivityIds, getPledgeRules, getPledgeHistory, getUserImpactSummary } from "@/app/actions";
 import { UserDashboard } from "@/components/dashboard/user-dashboard";
 
 async function getRecentActivities(accessToken: string) {
@@ -31,11 +31,13 @@ export default async function Home() {
   let dashboardData = null;
 
   if (session?.accessToken && session.user?.id) {
-    const [activities, pledgedIds, causes, rules] = await Promise.all([
+    const [activities, pledgedIds, causes, rules, history, summary] = await Promise.all([
       getRecentActivities(session.accessToken as string),
       getPledgedActivityIds(session.user.id),
       getGlobalCauses(),
       getPledgeRules(),
+      getPledgeHistory(),
+      getUserImpactSummary(),
     ]);
 
     // Filter out activities that are already in the ledger
@@ -46,6 +48,8 @@ export default async function Home() {
       activities: unpledged,
       causes: causes,
       rules: rules,
+      history: history,
+      summary: summary,
     };
   }
 
@@ -85,6 +89,8 @@ export default async function Home() {
                   activities={dashboardData.activities}
                   causes={dashboardData.causes}
                   initialRules={dashboardData.rules}
+                  history={dashboardData.history}
+                  summary={dashboardData.summary}
                 />
               )
             )}
