@@ -1,4 +1,6 @@
 import { motion } from "framer-motion";
+
+export const runtime = "edge";
 import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react";
 import { SignInButton } from "@/components/auth/signin-button";
 import { auth, signOut } from "@/auth";
