@@ -17,7 +17,7 @@ export async function getPledgedActivityIds(userId: string) {
         where: eq(ledger.userId, userId),
         columns: { activityId: true },
     });
-    return new Set(pledges.map((p) => p.activityId));
+    return new Set(pledges.map((p: { activityId: string }) => p.activityId));
 }
 
 export async function pledgeActivity(
@@ -106,7 +106,7 @@ export async function savePledgeRule(causeId: string, percentage: number, isEnab
     // Let's find existing first.
 
     const existing = await db.query.pledgeRules.findFirst({
-        where: (rules, { and, eq }) => and(eq(rules.userId, userId), eq(rules.causeId, causeId)),
+        where: (rules: any, { and, eq }: any) => and(eq(rules.userId, userId), eq(rules.causeId, causeId)),
     });
 
     if (existing) {
@@ -139,7 +139,7 @@ export async function syncAndAutoPledge(activitiesList: any[]) {
 
     // 1. Get enabled rules
     const rules = await db.query.pledgeRules.findMany({
-        where: (r, { and, eq }) => and(eq(r.userId, userId), eq(r.isEnabled, true)),
+        where: (r: any, { and, eq }: any) => and(eq(r.userId, userId), eq(r.isEnabled, true)),
     });
 
     if (rules.length === 0) return { pledged: 0 };
