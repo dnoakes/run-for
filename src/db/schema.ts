@@ -1,4 +1,5 @@
 import { integer, sqliteTable, text, primaryKey } from "drizzle-orm/sqlite-core"
+import { relations } from "drizzle-orm"
 import type { AdapterAccountType } from "next-auth/adapters"
 
 // --- Auth Tables (NextAuth Standard) ---
@@ -65,17 +66,57 @@ export const verificationTokens = sqliteTable(
 
 // --- RunFor App Tables ---
 
-export const causes = sqliteTable("cause", {
+export const causes = sqliteTable("causes", {
     id: text("id")
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+        .references(() => users.id, { onDelete: "cascade" }), // Nullable: If null, it's a global cause
+    isGlobal: integer("is_global", { mode: "boolean" }).notNull().default(false),
     title: text("title").notNull(),
-    description: text("description"),
+    description: text("description").notNull(),
     targetMiles: integer("target_miles").notNull(),
-    currentMiles: integer("current_miles").default(0),
+    currentMiles: integer("current_miles").notNull().default(0),
     imageUrl: text("image_url"),
-    active: integer("active", { mode: "boolean" }).default(true),
+    verificationStatus: text("verification_status", { enum: ["pending", "verified", "rejected"] }).default("pending"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
 })
+
+export const pledgeRules = sqliteTable("pledge_rules", {
+    id: text("id")
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    causeId: text("cause_id")
+        .notNull()
+        .references(() => causes.id, { onDelete: "cascade" }),
+    percentage: integer("percentage").notNull(), // 0-100
+    isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
+})
+
+// Relations
+export const causesRelations = relations(causes, ({ one, many }) => ({
+    user: one(users, {
+        fields: [causes.userId],
+        references: [users.id],
+    }),
+    pledgeRules: many(pledgeRules),
+}))
+
+export const pledgeRulesRelations = relations(pledgeRules, ({ one }) => ({
+    user: one(users, {
+        fields: [pledgeRules.userId],
+        references: [users.id],
+    }),
+    cause: one(causes, {
+        fields: [pledgeRules.causeId],
+        references: [causes.id],
+    }),
+}))
 
 export const activities = sqliteTable("activity", {
     id: text("id").primaryKey(), // Strava Activity ID

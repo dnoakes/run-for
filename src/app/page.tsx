@@ -5,27 +5,48 @@ import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react
 import { SignInButton } from "@/components/auth/signin-button";
 import { auth, signOut } from "@/auth";
 
-async function getLatestActivity(accessToken: string) {
+import { getGlobalCauses, getPledgedActivityIds, getPledgeRules } from "@/app/actions";
+import { UserDashboard } from "@/components/dashboard/user-dashboard";
+
+async function getRecentActivities(accessToken: string) {
   try {
-    const res = await fetch("https://www.strava.com/api/v3/athlete/activities?per_page=1", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const activities = await res.json();
-    return activities[0] || null;
+    const res = await fetch(
+      "https://www.strava.com/api/v3/athlete/activities?per_page=30",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return [];
+    return await res.json();
   } catch (e) {
-    console.error("Failed to fetch Strava activity:", e);
-    return null;
+    console.error("Failed to fetch Strava activities:", e);
+    return [];
   }
 }
 
 export default async function Home() {
   const session = await auth();
-  let latestActivity: any = null;
 
-  if (session?.accessToken) {
-    latestActivity = await getLatestActivity(session.accessToken as string);
+  let dashboardData = null;
+
+  if (session?.accessToken && session.user?.id) {
+    const [activities, pledgedIds, causes, rules] = await Promise.all([
+      getRecentActivities(session.accessToken as string),
+      getPledgedActivityIds(session.user.id),
+      getGlobalCauses(),
+      getPledgeRules(),
+    ]);
+
+    // Filter out activities that are already in the ledger
+    const unpledged = activities.filter((a: any) => !pledgedIds.has(a.id.toString()));
+
+    dashboardData = {
+      user: session.user,
+      activities: unpledged,
+      causes: causes,
+      rules: rules,
+    };
   }
 
   return (
@@ -58,48 +79,14 @@ export default async function Home() {
             {!session ? (
               <SignInButton />
             ) : (
-              <div className="bg-background/80 backdrop-blur-md border border-primary/20 p-6 rounded-2xl max-w-md w-full shadow-2xl shadow-primary/10">
-                <div className="flex items-center gap-4 mb-6">
-                  {session.user?.image && (
-                    <img src={session.user.image} alt={session.user.name || "User"} className="w-16 h-16 rounded-full border-2 border-primary" />
-                  )}
-                  <div className="text-left">
-                    <p className="text-sm text-muted-foreground">Welcome back,</p>
-                    <h3 className="text-xl font-bold text-foreground">{session.user?.name}</h3>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-muted/50 rounded-xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-orange-500/10 text-orange-500 rounded-lg">
-                        <Activity size={20} />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Latest Activity</p>
-                        <p className="font-medium">
-                          {latestActivity ? latestActivity.name : "No recent activity found"}
-                        </p>
-                      </div>
-                    </div>
-                    {latestActivity && (
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{(latestActivity.distance / 1609.34).toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">miles</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <form action={async () => {
-                  "use server"
-                  await signOut()
-                }}>
-                  <button className="mt-6 text-sm text-muted-foreground hover:text-red-400 flex items-center gap-2 mx-auto transition-colors">
-                    <LogOut size={14} /> Sign Out
-                  </button>
-                </form>
-              </div>
+              dashboardData && (
+                <UserDashboard
+                  user={dashboardData.user}
+                  activities={dashboardData.activities}
+                  causes={dashboardData.causes}
+                  initialRules={dashboardData.rules}
+                />
+              )
             )}
           </div>
         </div>
