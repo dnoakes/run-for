@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 interface HistoryItem {
     id: string;
     milesApplied: number;
-    createdAt: Date;
+    appliedAt: Date;
     activity: {
         name: string;
         distance: number;
@@ -36,19 +36,19 @@ export function PledgeHistory({ history }: { history: HistoryItem[] }) {
                     className="bg-muted/30 p-4 rounded-xl flex items-center justify-between border border-transparent hover:border-primary/10 transition-colors"
                 >
                     <div>
-                        <p className="font-medium text-sm">{item.activity.name}</p>
+                        <p className="font-medium text-sm">{item.activity?.name || "Unknown Activity"}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <span>{new Date(item.activity.startDate).toLocaleDateString()}</span>
+                            <span>{item.activity?.startDate ? new Date(item.activity.startDate).toLocaleDateString() : ""}</span>
                             <span>•</span>
                             <span className="text-primary font-semibold">
                                 {item.milesApplied} miles
                             </span>
                             <span>→</span>
-                            <span>{item.cause.title}</span>
+                            <span>{item.cause?.title || "Unknown Cause"}</span>
                         </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString()}
+                        {new Date(item.appliedAt).toLocaleDateString()}
                     </div>
                 </motion.div>
             ))}
