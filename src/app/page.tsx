@@ -1,67 +1,40 @@
-import { motion } from "framer-motion";
+import { Link2, Heart, Share2, ArrowRight } from "lucide-react";
+import { SignInButton } from "@/components/auth/signin-button";
+import { auth } from "@/auth";
+import Link from "next/link";
+import { db } from "@/db";
+import { causes, ledger } from "@/db/schema";
+import { sql, eq, desc } from "drizzle-orm";
 
 export const runtime = "edge";
-import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react";
-import { SignInButton } from "@/components/auth/signin-button";
-import { auth, signOut } from "@/auth";
 
-import { getGlobalCauses, getPledgedActivityIds, getPledgeRules, getPledgeHistory, getUserImpactSummary, syncActivities, getUnpledgedActivities } from "@/app/actions";
-import { UserDashboard } from "@/components/dashboard/user-dashboard";
-
-async function getRecentActivities(accessToken: string) {
+async function getFeaturedCauses() {
+  // Determine top causes by total miles applied in ledger
+  // This is an aggregation query
   try {
-    const res = await fetch(
-      "https://www.strava.com/api/v3/athlete/activities?per_page=30",
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      }
-    );
-    if (!res.ok) {
-      return { data: [], status: res.status };
-    }
-    const data = await res.json();
-    return { data, status: res.status };
+    const topCauses = await db
+      .select({
+        id: causes.id,
+        title: causes.title,
+        targetMiles: causes.targetMiles,
+        currentMiles: causes.currentMiles,
+        // We can just rely on currentMiles stored in the cause table which we keep updated!
+      })
+      .from(causes)
+      .where(eq(causes.isGlobal, true))
+      .orderBy(desc(causes.currentMiles))
+      .limit(4);
+
+    return topCauses;
   } catch (e) {
-    console.error("Failed to fetch Strava activities:", e);
-    return { data: [], status: 500 };
+    console.error("Failed to fetch featured causes", e);
+    return [];
   }
 }
 
 export default async function Home() {
   const session = await auth();
-
-  let dashboardData = null;
-
-  if (session?.accessToken && session.user?.id) {
-    // 1. Fetch from Strava
-    const stravaRes = await getRecentActivities(session.accessToken as string);
-
-    // 2. Sync to DB if successful
-    if (stravaRes.status === 200 && stravaRes.data.length > 0) {
-      await syncActivities(stravaRes.data, session.user.id);
-    }
-
-    // 3. Fetch from DB
-    const [unpledged, causes, rules, history, summary] = await Promise.all([
-      getUnpledgedActivities(),
-      getGlobalCauses(),
-      getPledgeRules(),
-      getPledgeHistory(),
-      getUserImpactSummary(),
-    ]);
-
-    dashboardData = {
-      user: session.user,
-      activities: unpledged,
-      causes: causes,
-      rules: rules,
-      history: history,
-      summary: summary,
-      totalFetched: stravaRes.data.length,
-      fetchStatus: stravaRes.status,
-    };
-  }
+  const featuredCauses = await getFeaturedCauses();
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-background text-foreground overflow-x-hidden">
@@ -69,14 +42,6 @@ export default async function Home() {
       <section className="relative w-full h-[100dvh] flex flex-col justify-center items-center px-4 text-center">
         {/* Background Effect */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-background to-background pointer-events-none" />
-
-        {/* Content */}
-        {/* We need a Client Component wrapper for motion if we want animation on server content, 
-            but for now we'll keep it simple or accept that we might lose some entry animation strictly on the text 
-            if we don't extract it. Actually, we can mix them. 
-            However, to keep this file a Server Component, we can't export a default that is 'use client'.
-            We will remove 'use client' from top and make motion components separate or just standard HTML for the dashboard part.
-        */}
 
         <div className="z-10 max-w-4xl space-y-6">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-blue-500 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -93,18 +58,9 @@ export default async function Home() {
             {!session ? (
               <SignInButton />
             ) : (
-              dashboardData && (
-                <UserDashboard
-                  user={dashboardData.user}
-                  activities={dashboardData.activities}
-                  causes={dashboardData.causes}
-                  initialRules={dashboardData.rules}
-                  history={dashboardData.history}
-                  summary={dashboardData.summary}
-                  totalFetched={dashboardData.totalFetched}
-                  fetchStatus={dashboardData.fetchStatus}
-                />
-              )
+              <Link href="/dashboard" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-full font-medium text-lg transition-colors flex items-center gap-2">
+                Go to Dashboard <ArrowRight size={20} />
+              </Link>
             )}
           </div>
         </div>
@@ -159,19 +115,14 @@ export default async function Home() {
 
           {/* Horizontal Scroll Container */}
           <div className="flex gap-6 overflow-x-auto pb-8 snap-x scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            {[
-              { title: "Clean Water for All", distance: "42,039 miles", color: "from-cyan-500 to-blue-500" },
-              { title: "Mental Health Awareness", distance: "15,200 miles", color: "from-purple-500 to-pink-500" },
-              { title: "Save Our Forests", distance: "8,920 miles", color: "from-green-500 to-emerald-700" },
-              { title: "Local Animal Shelter", distance: "3,100 miles", color: "from-orange-400 to-red-500" },
-            ].map((cause, i) => (
+            {featuredCauses.length > 0 ? featuredCauses.map((cause, i) => (
               <div
-                key={i}
+                key={cause.id}
                 className="min-w-[300px] md:min-w-[350px] snap-start bg-muted rounded-xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"
               >
-                <div className={`h-40 w-full bg-gradient-to-br ${cause.color} relative p-6 flex items-end`}>
+                <div className={`h-40 w-full bg-gradient-to-br from-blue-900 to-slate-900 relative p-6 flex items-end`}>
                   <div className="absolute top-4 right-4 bg-black/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white/90">
-                    Official NPO
+                    Global Cause
                   </div>
                 </div>
                 <div className="p-6 space-y-4">
@@ -179,18 +130,25 @@ export default async function Home() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Progress</span>
-                      <span className="text-primary font-mono">{cause.distance}</span>
+                      <span className="text-primary font-mono">{cause.currentMiles.toLocaleString()} / {cause.targetMiles.toLocaleString()} mi</span>
                     </div>
                     <div className="h-2 w-full bg-background rounded-full overflow-hidden">
-                      <div className="h-full bg-primary w-3/4 rounded-full" />
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min((cause.currentMiles / cause.targetMiles) * 100, 100)}%` }}
+                      />
                     </div>
                   </div>
-                  <button className="w-full py-2 border border-white/10 rounded-lg hover:bg-white/5 transition-colors text-sm font-medium cursor-pointer">
-                    Run for this
-                  </button>
+                  <div className="w-full py-2 text-center text-sm font-medium text-primary">
+                    View Impact
+                  </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-full text-center text-muted-foreground">
+                <p>No featured causes found. Check back soon!</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
