@@ -5,7 +5,7 @@ import { Link2, Heart, Share2, ArrowRight, Activity, LogOut } from "lucide-react
 import { SignInButton } from "@/components/auth/signin-button";
 import { auth, signOut } from "@/auth";
 
-import { getGlobalCauses, getPledgedActivityIds, getPledgeRules, getPledgeHistory, getUserImpactSummary } from "@/app/actions";
+import { getGlobalCauses, getPledgedActivityIds, getPledgeRules, getPledgeHistory, getUserImpactSummary, syncActivities, getUnpledgedActivities } from "@/app/actions";
 import { UserDashboard } from "@/components/dashboard/user-dashboard";
 
 async function getRecentActivities(accessToken: string) {
@@ -34,19 +34,22 @@ export default async function Home() {
   let dashboardData = null;
 
   if (session?.accessToken && session.user?.id) {
-    const [activitiesRes, pledgedIds, causes, rules, history, summary] = await Promise.all([
-      getRecentActivities(session.accessToken as string),
-      getPledgedActivityIds(session.user.id),
+    // 1. Fetch from Strava
+    const stravaRes = await getRecentActivities(session.accessToken as string);
+
+    // 2. Sync to DB if successful
+    if (stravaRes.status === 200 && stravaRes.data.length > 0) {
+      await syncActivities(stravaRes.data, session.user.id);
+    }
+
+    // 3. Fetch from DB
+    const [unpledged, causes, rules, history, summary] = await Promise.all([
+      getUnpledgedActivities(),
       getGlobalCauses(),
       getPledgeRules(),
       getPledgeHistory(),
       getUserImpactSummary(),
     ]);
-
-    const activities = activitiesRes.data;
-
-    // Filter out activities that are already in the ledger
-    const unpledged = activities.filter((a: any) => !pledgedIds.has(a.id.toString()));
 
     dashboardData = {
       user: session.user,
@@ -55,8 +58,8 @@ export default async function Home() {
       rules: rules,
       history: history,
       summary: summary,
-      totalFetched: activities.length,
-      fetchStatus: activitiesRes.status,
+      totalFetched: stravaRes.data.length,
+      fetchStatus: stravaRes.status,
     };
   }
 
