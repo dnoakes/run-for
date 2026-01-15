@@ -42,6 +42,7 @@ export function UserDashboard({
     initialRules,
     history,
     summary,
+    totalFetched,
 }: {
     user: any;
     activities: StravaActivity[];
