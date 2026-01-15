@@ -43,6 +43,7 @@ export function UserDashboard({
     history,
     summary,
     totalFetched,
+    fetchStatus,
 }: {
     user: any;
     activities: StravaActivity[];
@@ -51,6 +52,7 @@ export function UserDashboard({
     history: any[];
     summary: any[];
     totalFetched: number;
+    fetchStatus: number;
 }) {
     const [unpledged, setUnpledged] = useState(activities);
     const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(
@@ -138,7 +140,7 @@ export function UserDashboard({
                             <Activity className="text-primary" size={20} />
                             Unpledged Runs
                             <span className="text-xs text-muted-foreground font-normal ml-2">
-                                (Fetched {totalFetched} from Strava)
+                                (Fetched {totalFetched} from Strava [Status: {fetchStatus}])
                             </span>
                         </h4>
                     </div>

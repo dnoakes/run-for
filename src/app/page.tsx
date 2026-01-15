@@ -17,11 +17,14 @@ async function getRecentActivities(accessToken: string) {
         cache: "no-store",
       }
     );
-    if (!res.ok) return [];
-    return await res.json();
+    if (!res.ok) {
+      return { data: [], status: res.status };
+    }
+    const data = await res.json();
+    return { data, status: res.status };
   } catch (e) {
     console.error("Failed to fetch Strava activities:", e);
-    return [];
+    return { data: [], status: 500 };
   }
 }
 
@@ -31,7 +34,7 @@ export default async function Home() {
   let dashboardData = null;
 
   if (session?.accessToken && session.user?.id) {
-    const [activities, pledgedIds, causes, rules, history, summary] = await Promise.all([
+    const [activitiesRes, pledgedIds, causes, rules, history, summary] = await Promise.all([
       getRecentActivities(session.accessToken as string),
       getPledgedActivityIds(session.user.id),
       getGlobalCauses(),
@@ -39,6 +42,8 @@ export default async function Home() {
       getPledgeHistory(),
       getUserImpactSummary(),
     ]);
+
+    const activities = activitiesRes.data;
 
     // Filter out activities that are already in the ledger
     const unpledged = activities.filter((a: any) => !pledgedIds.has(a.id.toString()));
@@ -51,6 +56,7 @@ export default async function Home() {
       history: history,
       summary: summary,
       totalFetched: activities.length,
+      fetchStatus: activitiesRes.status,
     };
   }
 
@@ -92,9 +98,8 @@ export default async function Home() {
                   initialRules={dashboardData.rules}
                   history={dashboardData.history}
                   summary={dashboardData.summary}
-                  totalFetched={dashboardData.activities?.length || 0} // This is the UNFILTERED list length from getRecentActivities if I pass it? No, activities IS unpledged.
-                // Wait, I filtered 'activities' in page.tsx above.
-                // I need to change dashboardData structure or pass the raw count.
+                  totalFetched={dashboardData.totalFetched}
+                  fetchStatus={dashboardData.fetchStatus}
                 />
               )
             )}
