@@ -26,23 +26,74 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     ],
     // Remove the unused jwt callback entirely since we are using database strategy
     callbacks: {
-        async session({ session, user }) {
-            // Fetch the account to get the access_token
-            // In a production app, verify if you should expose this.
-            // For this app, we need it for the frontend/server-component API calls.
+        callbacks: {
+            async session({ session, user }) {
+                try {
+                    const account = await db.query.accounts.findFirst({
+                        where: eq(accounts.userId, user.id)
+                    })
 
-            // We need to query the accounts table. 
-            // Since we are inside the auth config, we can use the 'db' instance.
-            const account = await db.query.accounts.findFirst({
-                where: eq(accounts.userId, user.id)
-            })
+                    if (!account) return session
 
-            return {
-                ...session,
-                accessToken: account?.access_token,
-                refreshToken: account?.refresh_token,
-            }
+                    // Check if token is expired (or expires in < 5 mins)
+                    // account.expires_at is typically seconds. Date.now() is ms.
+                    const nowSeconds = Math.floor(Date.now() / 1000)
+                    const isExpired = account.expires_at ? account.expires_at < (nowSeconds + 300) : false
+
+                    if (isExpired && account.refresh_token) {
+                        console.log("Token expired, refreshing...")
+                        try {
+                            const response = await fetch("https://www.strava.com/oauth/token", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    client_id: process.env.STRAVA_CLIENT_ID,
+                                    client_secret: process.env.STRAVA_CLIENT_SECRET,
+                                    grant_type: "refresh_token",
+                                    refresh_token: account.refresh_token,
+                                }),
+                            })
+
+                            const tokens = await response.json()
+
+                            if (response.ok && tokens.access_token) {
+                                // Update DB
+                                await db.update(accounts)
+                                    .set({
+                                        access_token: tokens.access_token,
+                                        refresh_token: tokens.refresh_token,
+                                        expires_at: tokens.expires_at,
+                                    })
+                                    .where(
+                                        // Compound PK update might be tricky with simple .where() if not specifying the PK cols correctly?
+                                        // Actually we can filter by userId and provider which IS likely unique per user.
+                                        // But schema PK is provider + providerAccountId. 
+                                        // But we found this account by userId. A user only has one Strava account here.
+                                        eq(accounts.userId, user.id)
+                                    )
+
+                                console.log("Token refreshed successfully")
+                                return {
+                                    ...session,
+                                    accessToken: tokens.access_token,
+                                }
+                            } else {
+                                console.error("Failed to refresh token", tokens)
+                            }
+                        } catch (error) {
+                            console.error("Error refreshing token:", error)
+                        }
+                    }
+
+                    return {
+                        ...session,
+                        accessToken: account.access_token,
+                    }
+                } catch (error) {
+                    console.error("Session callback error:", error)
+                    return session
+                }
+            },
         },
-    },
-    debug: true,
-})
+        debug: true,
+    })
