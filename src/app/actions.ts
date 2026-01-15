@@ -256,3 +256,52 @@ export async function getUserImpactSummary() {
         return [];
     }
 }
+
+export async function syncActivities(activitiesList: any[], userId: string) {
+    // 1. Upsert all fetched activities to DB
+    for (const activity of activitiesList) {
+        await db.insert(activities).values({
+            id: activity.id.toString(),
+            userId: userId,
+            name: activity.name,
+            distance: activity.distance,
+            movingTime: activity.moving_time,
+            startDate: new Date(activity.start_date),
+            summaryPolyline: activity.map?.summary_polyline,
+        }).onConflictDoNothing();
+    }
+}
+
+export async function getUnpledgedActivities() {
+    try {
+        const session = await auth();
+        if (!session?.user?.id) return [];
+
+        const pledgedIdsSet = await getPledgedActivityIds(session.user.id);
+        const pledgedIds = Array.from(pledgedIdsSet);
+
+        // Fetch activities from DB
+        const dbActivities = await db.query.activities.findMany({
+            where: (t, { and, notInArray, eq }) => {
+                if (pledgedIds.length > 0) {
+                    return and(eq(t.userId, session.user.id), notInArray(t.id, pledgedIds));
+                }
+                return eq(t.userId, session.user.id);
+            },
+            orderBy: (t, { desc }) => [desc(t.startDate)],
+        });
+
+        return dbActivities.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            distance: a.distance,
+            moving_time: a.movingTime,
+            start_date: a.startDate.toISOString(),
+            map: { summary_polyline: a.summaryPolyline }
+        }));
+
+    } catch (e) {
+        console.error("Failed to fetch unpledged activities:", e);
+        return [];
+    }
+}
