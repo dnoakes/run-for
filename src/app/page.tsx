@@ -113,40 +113,54 @@ export default async function Home() {
             </button>
           </div>
 
-          {/* Horizontal Scroll Container */}
-          <div className="flex gap-6 overflow-x-auto pb-8 snap-x scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            {featuredCauses.length > 0 ? featuredCauses.map((cause: any, i: number) => (
-              <div
-                key={cause.id}
-                className="min-w-[300px] md:min-w-[350px] snap-start bg-muted rounded-xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"
-              >
-                <div className={`h-40 w-full bg-gradient-to-br from-blue-900 to-slate-900 relative p-6 flex items-end`}>
-                  <div className="absolute top-4 right-4 bg-black/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white/90">
-                    Global Cause
-                  </div>
-                </div>
-                <div className="p-6 space-y-4">
-                  <h3 className="text-xl font-bold">{cause.title}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Progress</span>
-                      <span className="text-primary font-mono">{cause.currentMiles.toLocaleString()} / {cause.targetMiles.toLocaleString()} mi</span>
-                    </div>
-                    <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+          {/* Visualizing Impact - Relative Bars */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-end h-[400px]">
+            {featuredCauses.length > 0 ? (
+              <>
+                {/* Find max miles for scaling */}
+                {(() => {
+                  const maxMiles = Math.max(...featuredCauses.map((c: any) => c.currentMiles));
+
+                  return featuredCauses.map((cause: any, i: number) => {
+                    const heightPercent = Math.max((cause.currentMiles / maxMiles) * 100, 20); // Min 20% height
+                    const isTop = i === 0;
+
+                    return (
                       <div
-                        className="h-full bg-primary rounded-full transition-all duration-1000"
-                        style={{ width: `${Math.min((cause.currentMiles / cause.targetMiles) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="w-full py-2 text-center text-sm font-medium text-primary">
-                    View Impact
-                  </div>
-                </div>
-              </div>
-            )) : (
-              <div className="col-span-full text-center text-muted-foreground">
-                <p>No featured causes found. Check back soon!</p>
+                        key={cause.id}
+                        className="relative flex flex-col justify-end h-full group"
+                      >
+                        <div
+                          className={`relative w-full rounded-2xl overflow-hidden transition-all duration-700 ease-out border border-white/5 hover:border-primary/30 ${isTop ? 'bg-primary/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]' : 'bg-muted/50'}`}
+                          style={{ height: `${heightPercent}%` }}
+                        >
+                          {/* Bar Fill Gradient */}
+                          <div className={`absolute inset-0 bg-gradient-to-t ${isTop ? 'from-primary/40 to-primary/10' : 'from-white/10 to-transparent'} opacity-50`}></div>
+
+                          {/* Content inside bar */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col justify-end h-full">
+                            <div className="mb-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform -translate-y-2 group-hover:translate-y-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              #{i + 1} Ranked Cause
+                            </div>
+
+                            <div className="space-y-1">
+                              <h3 className={`font-bold leading-tight ${isTop ? 'text-2xl text-white' : 'text-xl text-white/90'}`}>
+                                {cause.title}
+                              </h3>
+                              <p className={`font-mono font-medium ${isTop ? 'text-primary text-xl' : 'text-muted-foreground text-lg'}`}>
+                                {cause.currentMiles.toLocaleString()} <span className="text-sm opacity-70">miles</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </>
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground self-center">
+                <p>No featured causes found yet. Be the first to start a movement!</p>
               </div>
             )}
           </div>
