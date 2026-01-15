@@ -282,13 +282,13 @@ export async function getUnpledgedActivities() {
 
         // Fetch activities from DB
         const dbActivities = await db.query.activities.findMany({
-            where: (t, { and, notInArray, eq }) => {
+            where: (t: any, { and, notInArray, eq }: any) => {
                 if (pledgedIds.length > 0) {
                     return and(eq(t.userId, session.user.id), notInArray(t.id, pledgedIds));
                 }
                 return eq(t.userId, session.user.id);
             },
-            orderBy: (t, { desc }) => [desc(t.startDate)],
+            orderBy: (t: any, { desc }: any) => [desc(t.startDate)],
         });
 
         return dbActivities.map((a: any) => ({
