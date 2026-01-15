@@ -115,7 +115,7 @@ export default async function Home() {
 
           {/* Horizontal Scroll Container */}
           <div className="flex gap-6 overflow-x-auto pb-8 snap-x scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            {featuredCauses.length > 0 ? featuredCauses.map((cause, i) => (
+            {featuredCauses.length > 0 ? featuredCauses.map((cause: any, i: number) => (
               <div
                 key={cause.id}
                 className="min-w-[300px] md:min-w-[350px] snap-start bg-muted rounded-xl overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300"
