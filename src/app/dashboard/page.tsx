@@ -12,6 +12,8 @@ import {
 } from "@/app/actions";
 import { UserDashboard } from "@/components/dashboard/user-dashboard";
 
+export const runtime = "edge";
+
 async function getRecentActivities(accessToken: string) {
     try {
         const res = await fetch(
