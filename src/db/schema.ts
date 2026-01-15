@@ -146,3 +146,18 @@ export const ledger = sqliteTable("ledger", {
     milesApplied: integer("miles_applied").notNull(),
     appliedAt: integer("applied_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date()),
 })
+
+export const ledgerRelations = relations(ledger, ({ one }) => ({
+    activity: one(activities, {
+        fields: [ledger.activityId],
+        references: [activities.id],
+    }),
+    cause: one(causes, {
+        fields: [ledger.causeId],
+        references: [causes.id],
+    }),
+    user: one(users, {
+        fields: [ledger.userId],
+        references: [users.id],
+    }),
+}))
