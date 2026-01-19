@@ -41,9 +41,7 @@ export function UserDashboard({
     causes,
     initialRules,
     history,
-    summary,
-    totalFetched,
-    fetchStatus,
+    summary: initialSummary,
 }: {
     user: any;
     activities: StravaActivity[];
@@ -51,10 +49,9 @@ export function UserDashboard({
     initialRules: any[];
     history: any[];
     summary: any[];
-    totalFetched: number;
-    fetchStatus: number;
 }) {
     const [unpledged, setUnpledged] = useState(activities);
+    const [summary, setSummary] = useState(initialSummary);
     const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(
         null
     );
@@ -64,6 +61,10 @@ export function UserDashboard({
     useEffect(() => {
         setUnpledged(activities);
     }, [activities]);
+
+    useEffect(() => {
+        setSummary(initialSummary);
+    }, [initialSummary]);
 
     useEffect(() => {
         const runAutoPledge = async () => {
@@ -83,10 +84,37 @@ export function UserDashboard({
         setPledging(true);
         try {
             await pledgeActivity(selectedActivity, causeId);
-            // Remove from list locally for instant feedback
+
+            // 1. Calculate miles to add
+            const milesToAdd = Math.round(selectedActivity.distance * 0.000621371);
+
+            // 2. Optimistic Update: Remove from list locally
             setUnpledged((prev) => prev.filter((a) => a.id !== selectedActivity.id));
+
+            // 3. Optimistic Update: Update Summary
+            setSummary((prev) => {
+                const existingIndex = prev.findIndex((s) => s.causeId === causeId);
+                if (existingIndex >= 0) {
+                    // Update existing cause total
+                    const newSummary = [...prev];
+                    newSummary[existingIndex] = {
+                        ...newSummary[existingIndex],
+                        totalMiles: newSummary[existingIndex].totalMiles + milesToAdd
+                    };
+                    return newSummary;
+                } else {
+                    // Add new cause entry if not present (unlikely if global causes used correctly, but safer)
+                    const cause = causes.find(c => c.id === causeId);
+                    return [...prev, {
+                        causeId: causeId,
+                        causeTitle: cause?.title || "Unknown Cause",
+                        totalMiles: milesToAdd
+                    }];
+                }
+            });
+
             setSelectedActivity(null);
-            router.refresh(); // Refresh to update history/summary
+            router.refresh();
         } catch (e) {
             console.error(e);
             alert("Failed to pledge. Try again.");
@@ -139,13 +167,10 @@ export function UserDashboard({
                         <h4 className="text-lg font-semibold flex items-center gap-2">
                             <Activity className="text-primary" size={20} />
                             Unpledged Runs
-                            <span className="text-xs text-muted-foreground font-normal ml-2">
-                                (Fetched {totalFetched} from Strava [Status: {fetchStatus}])
-                            </span>
                         </h4>
                     </div>
 
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                    <div className="space-y-3 pr-2">
                         {unpledged.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
                                 <p>All caught up! Go for a run. 🏃‍♂️</p>

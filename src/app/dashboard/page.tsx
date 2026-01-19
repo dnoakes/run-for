@@ -73,8 +73,6 @@ export default async function DashboardPage() {
                     initialRules={rules}
                     history={history}
                     summary={summary}
-                    totalFetched={stravaRes.data.length}
-                    fetchStatus={stravaRes.status}
                 />
             </div>
         </div>
