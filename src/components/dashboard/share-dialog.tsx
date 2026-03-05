@@ -27,7 +27,7 @@ export function ShareDialog({ isOpen, onClose, data }: ShareDialogProps) {
 
     if (!data) return null;
 
-    const shareText = `I just dedicated ${data.miles} miles to ${data.causeName} on RunFor!`;
+    const shareText = `I just dedicated ${data.miles} miles to ${data.causeName} on We Run For!`;
     const shareUrl = "https://run-for.pages.dev";
 
     const handleShare = async () => {

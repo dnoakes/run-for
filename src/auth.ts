@@ -20,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }),
         Resend({
             apiKey: process.env.AUTH_RESEND_KEY,
-            from: process.env.AUTH_EMAIL_FROM ?? "RunFor <noreply@run-for.pages.dev>",
+            from: process.env.AUTH_EMAIL_FROM ?? "We Run For <noreply@run-for.pages.dev>",
         }),
     ],
     callbacks: {

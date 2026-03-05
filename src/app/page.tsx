@@ -169,7 +169,7 @@ export default async function Home() {
 
       {/* Footer */}
       <footer className="w-full py-8 border-t border-white/5 text-center text-muted-foreground text-sm">
-        <p>&copy; 2026 RunFor. Run with purpose.</p>
+        <p>&copy; 2026 We Run For. Together, every mile matters.</p>
       </footer>
     </main>
   );

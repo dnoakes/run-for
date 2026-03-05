@@ -8,8 +8,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "RunFor - Make Every Mile Meaningful",
-  description: "Turn your Strava runs into awareness for causes you love.",
+  title: "We Run For - Make Every Mile Meaningful",
+  description: "A community movement turning Strava runs into awareness for causes that matter.",
 };
 
 export default function RootLayout({

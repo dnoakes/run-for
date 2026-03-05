@@ -1,8 +1,8 @@
-# CLAUDE.md — RunFor Codebase Guide
+# CLAUDE.md — We Run For Codebase Guide
 
 ## Project Overview
 
-**RunFor** is a Next.js full-stack web application that turns Strava runs into awareness for charitable causes. Users connect their Strava account, set pledge rules (e.g. "50% of my miles go to Cause A"), and their runs automatically generate impact.
+**We Run For** is a Next.js full-stack web application and community movement that turns Strava runs into awareness for charitable causes. Users connect their Strava account, set pledge rules (e.g. "50% of my miles go to Cause A"), and their runs automatically generate impact.
 
 **Core flow:** User runs → Strava sync → Miles calculated → Pledged to causes → Cause totals updated
 
