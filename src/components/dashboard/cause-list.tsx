@@ -1,6 +1,5 @@
 
 import { Trophy, Users, ArrowUpRight } from "lucide-react";
-import { Progress } from "@/components/ui/progress"; // We might need to ensure this generic UI exists or use HTML progress
 
 interface Cause {
     id: string;
