@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Share2 } from "lucide-react";
 
 interface HistoryItem {
     id: string;
@@ -16,7 +17,24 @@ interface HistoryItem {
     };
 }
 
-export function PledgeHistory({ history }: { history: HistoryItem[] }) {
+interface ShareData {
+    mode: "run" | "impact";
+    userName: string;
+    causeName: string;
+    miles: number;
+    date?: string;
+    runName?: string;
+}
+
+export function PledgeHistory({
+    history,
+    userName,
+    onShare,
+}: {
+    history: HistoryItem[];
+    userName: string;
+    onShare: (data: ShareData) => void;
+}) {
     if (!history || history.length === 0) {
         return (
             <div className="text-center py-12 text-muted-foreground">
@@ -33,7 +51,7 @@ export function PledgeHistory({ history }: { history: HistoryItem[] }) {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-muted/30 p-4 rounded-xl flex items-center justify-between border border-transparent hover:border-primary/10 transition-colors"
+                    className="bg-muted/30 p-4 rounded-xl flex items-center justify-between border border-transparent hover:border-primary/10 transition-colors group"
                 >
                     <div>
                         <p className="font-medium text-sm">{item.activity?.name || "Unknown Activity"}</p>
@@ -47,9 +65,20 @@ export function PledgeHistory({ history }: { history: HistoryItem[] }) {
                             <span>{item.cause?.title || "Unknown Cause"}</span>
                         </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                        {new Date(item.appliedAt).toLocaleDateString()}
-                    </div>
+                    <button
+                        onClick={() => onShare({
+                            mode: "run",
+                            userName,
+                            causeName: item.cause?.title || "a cause",
+                            miles: item.milesApplied,
+                            date: item.activity?.startDate ? new Date(item.activity.startDate).toISOString() : undefined,
+                            runName: item.activity?.name,
+                        })}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                        title="Share this run"
+                    >
+                        <Share2 size={14} />
+                    </button>
                 </motion.div>
             ))}
         </div>

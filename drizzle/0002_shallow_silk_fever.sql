@@ -1,0 +1,1 @@
+ALTER TABLE `activity` ADD `source` text DEFAULT 'strava' NOT NULL;

@@ -1,9 +1,11 @@
 
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { eq, and } from "drizzle-orm";
+import { db } from "@/db";
+import { accounts } from "@/db/schema";
 import {
     getGlobalCauses,
-    getPledgedActivityIds,
     getPledgeRules,
     getPledgeHistory,
     getUserImpactSummary,
@@ -37,19 +39,24 @@ async function getRecentActivities(accessToken: string) {
 export default async function DashboardPage() {
     const session = await auth();
 
-    if (!session?.user || !session.accessToken) {
+    if (!session?.user?.id) {
         redirect("/");
     }
 
-    // 1. Fetch from Strava
-    const stravaRes = await getRecentActivities(session.accessToken as string);
+    // Check if Strava is connected for this user
+    const stravaAccount = await db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.provider, "strava"))
+    });
+    const stravaConnected = !!stravaAccount;
 
-    // 2. Sync to DB if successful
-    if (stravaRes.status === 200 && stravaRes.data.length > 0) {
-        await syncActivities(stravaRes.data, session.user.id);
+    // Sync Strava activities if connected
+    if (stravaConnected && session.accessToken) {
+        const stravaRes = await getRecentActivities(session.accessToken as string);
+        if (stravaRes.status === 200 && stravaRes.data.length > 0) {
+            await syncActivities(stravaRes.data, session.user.id);
+        }
     }
 
-    // 3. Fetch from DB
     const [unpledged, causes, rules, history, summary] = await Promise.all([
         getUnpledgedActivities(),
         getGlobalCauses(),
@@ -61,11 +68,6 @@ export default async function DashboardPage() {
     return (
         <div className="min-h-screen bg-background pt-24 px-4 pb-12 flex flex-col items-center">
             <div className="w-full max-w-5xl space-y-8">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h1 className="text-3xl font-bold">Your Dashboard</h1>
-                    {/* SignOut button is in the header usually, but we can keep it here or relying on the header */}
-                </div>
-
                 <UserDashboard
                     user={session.user}
                     activities={unpledged}
@@ -73,6 +75,7 @@ export default async function DashboardPage() {
                     initialRules={rules}
                     history={history}
                     summary={summary}
+                    stravaConnected={stravaConnected}
                 />
             </div>
         </div>
