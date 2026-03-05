@@ -179,6 +179,13 @@ const roundedMiles = Math.round(miles); // ledger stores integer miles
 - Log errors with `console.error()` for debugging
 - After mutations, call `revalidatePath("/")` to invalidate Next.js cache
 
+### Git Workflow
+
+Push directly to `main` — no PRs or feature branches required at this stage of the project. Always use:
+```bash
+git push -u origin main
+```
+
 ### Commit Messages
 
 Follow the pattern: `Category: Short description`
