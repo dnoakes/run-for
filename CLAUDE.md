@@ -1,8 +1,8 @@
-# CLAUDE.md — RunFor Codebase Guide
+# CLAUDE.md — We Run For Codebase Guide
 
 ## Project Overview
 
-**RunFor** is a Next.js full-stack web application that turns Strava runs into awareness for charitable causes. Users connect their Strava account, set pledge rules (e.g. "50% of my miles go to Cause A"), and their runs automatically generate impact.
+**We Run For** is a Next.js full-stack web application and community movement that turns Strava runs into awareness for charitable causes. Users connect their Strava account, set pledge rules (e.g. "50% of my miles go to Cause A"), and their runs automatically generate impact.
 
 **Core flow:** User runs → Strava sync → Miles calculated → Pledged to causes → Cause totals updated
 
@@ -178,6 +178,13 @@ const roundedMiles = Math.round(miles); // ledger stores integer miles
 - Server actions that mutate state should throw errors on auth failure: `throw new Error("Unauthorized")`
 - Log errors with `console.error()` for debugging
 - After mutations, call `revalidatePath("/")` to invalidate Next.js cache
+
+### Git Workflow
+
+Push directly to `main` — no PRs or feature branches required at this stage of the project. Always use:
+```bash
+git push -u origin main
+```
 
 ### Commit Messages
 

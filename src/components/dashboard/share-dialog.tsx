@@ -1,13 +1,12 @@
+"use client"
 
+import { useState } from "react";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Share2, Check, Copy } from "lucide-react";
 import { DedicationCard } from "./dedication-card";
 
 interface ShareDialogProps {
@@ -24,32 +23,41 @@ interface ShareDialogProps {
 }
 
 export function ShareDialog({ isOpen, onClose, data }: ShareDialogProps) {
+    const [copied, setCopied] = useState(false);
+
     if (!data) return null;
 
-    const handleShare = async () => {
-        const shareData = {
-            title: `My Run for ${data.causeName}`,
-            text: `I just dedicated ${data.miles} miles to ${data.causeName} on RunFor!`,
-            url: "https://runfor.app", // Replace with actual URL/dynamic link later
-        };
+    const shareText = `I just dedicated ${data.miles} miles to ${data.causeName} on We Run For!`;
+    const shareUrl = "https://run-for.pages.dev";
 
+    const handleShare = async () => {
         if (navigator.share) {
             try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.error("Error sharing:", err);
+                await navigator.share({
+                    title: `My Run for ${data.causeName}`,
+                    text: shareText,
+                    url: shareUrl,
+                });
+            } catch {
+                // User cancelled — not an error
             }
         } else {
-            // Fallback for desktop? Copy to clipboard maybe?
-            alert("Sharing not supported on this device/browser yet. Take a screenshot!");
+            try {
+                await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } catch {
+                // clipboard not available — silently fail
+            }
         }
     };
+
+    const hasNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-sm p-0 overflow-hidden bg-transparent border-none shadow-none">
                 <div className="flex flex-col gap-4">
-                    {/* Card Preview */}
                     <div className="transform scale-100 hover:scale-[1.02] transition-transform duration-300">
                         <DedicationCard
                             mode={data.mode}
@@ -67,8 +75,13 @@ export function ShareDialog({ isOpen, onClose, data }: ShareDialogProps) {
                             <p className="text-xs text-muted-foreground">Inspire others to run for a cause.</p>
                         </div>
                         <Button onClick={handleShare} className="w-full gap-2" size="lg">
-                            <Share2 size={18} />
-                            Share Now
+                            {copied ? (
+                                <><Check size={18} /> Copied!</>
+                            ) : hasNativeShare ? (
+                                <><Share2 size={18} /> Share Now</>
+                            ) : (
+                                <><Copy size={18} /> Copy Link</>
+                            )}
                         </Button>
                     </div>
                 </div>

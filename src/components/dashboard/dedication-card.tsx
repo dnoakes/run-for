@@ -35,7 +35,7 @@ export function DedicationCard({
             <div className="relative z-10">
                 <div className="flex items-center gap-2 text-white/80 text-sm font-medium uppercase tracking-wider mb-2">
                     <Heart className="w-4 h-4 text-pink-300 fill-pink-300" />
-                    <span>RunFor.app Dedication</span>
+                    <span>We Run For — Dedication</span>
                 </div>
                 <h3 className="text-3xl font-bold leading-tight">
                     {mode === "run" ? "I ran for" : "I support"}
@@ -69,7 +69,7 @@ export function DedicationCard({
                         </div>
                         <span className="font-medium text-sm">{userName || "A Runner"}</span>
                     </div>
-                    <span className="font-mono text-xs opacity-60">runfor.app</span>
+                    <span className="font-mono text-xs opacity-60">werunfor.app</span>
                 </div>
             </div>
         </div>

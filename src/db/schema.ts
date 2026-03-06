@@ -119,12 +119,13 @@ export const pledgeRulesRelations = relations(pledgeRules, ({ one }) => ({
 }))
 
 export const activities = sqliteTable("activity", {
-    id: text("id").primaryKey(), // Strava Activity ID
+    id: text("id").primaryKey(), // "${source}_${sourceId}" or legacy Strava activity ID
     userId: text("userId")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").notNull().default("strava"), // "strava" | future: "garmin", "apple_health", etc.
     name: text("name"),
-    distance: integer("distance").notNull(), // stored in meters? Strava uses meters. Drizzle integer usually okay.
+    distance: integer("distance").notNull(), // meters
     movingTime: integer("moving_time"), // seconds
     startDate: integer("start_date", { mode: "timestamp_ms" }).notNull(),
     summaryPolyline: text("summary_polyline"),
