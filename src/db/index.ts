@@ -1,56 +1,46 @@
 import { drizzle as drizzleD1 } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
-let db: any;
+type DbInstance = ReturnType<typeof drizzleD1>;
 
-const isEdge = process.env.NEXT_RUNTIME === "edge";
+let _localDb: DbInstance | null = null;
 
-if (process.env.NODE_ENV === "production" || isEdge) {
-    // Edge / Production (Cloudflare D1)
-    // The binding 'run_for_db' is available in the request context or globally patched
-    // During 'next dev', if runtime='edge', we might still be here.
-    if (process.env.run_for_db) {
-        db = drizzleD1(process.env.run_for_db as any, { schema });
-    } else {
-        // Fallback for Build Time (Bindings are not available during build)
-        // We provide a mock D1 database to allow static analysis/initialization to proceed without crashing.
-        console.warn("⚠️ D1 Binding 'run_for_db' not found. Using Mock DB for build/edge-initialization.");
+function getDb(): DbInstance {
+    const isEdge = process.env.NEXT_RUNTIME === "edge";
+    const isProd = process.env.NODE_ENV === "production";
 
-        const mockD1 = {
-            prepare: () => ({
-                bind: () => ({
-                    all: async () => [],
-                    first: async () => null,
-                    run: async () => ({ meta: {}, results: [], success: true }),
-                }),
-            }),
-            batch: async () => [],
-            dump: async () => new ArrayBuffer(0),
-            exec: async () => { },
-        };
-
-        db = drizzleD1(mockD1 as any, { schema });
+    if (isProd || isEdge) {
+        // Access the D1 binding from the Cloudflare request context.
+        // Must be called per-request — not at module init time.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { getRequestContext } = require("@cloudflare/next-on-pages");
+        const { env } = getRequestContext();
+        if (!env.run_for_db) {
+            throw new Error("D1 binding 'run_for_db' not found in Cloudflare env. Check wrangler.toml.");
+        }
+        return drizzleD1(env.run_for_db as D1Database, { schema });
     }
-} else {
-    // Local Development (Node.js)
-    // Use better-sqlite3 with a local file
-    try {
+
+    // Local development — reuse the same better-sqlite3 instance
+    if (!_localDb) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { drizzle: drizzleSqlite } = require("drizzle-orm/better-sqlite3");
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const Database = require("better-sqlite3");
-        // Ensure the valid path or just root
         const sqlite = new Database("local.db");
-        db = drizzleSqlite(sqlite, { schema });
-    } catch (e) {
-        console.error("❌ FAILED TO LOAD BETTER-SQLITE3:", e);
+        _localDb = drizzleSqlite(sqlite, { schema });
+        console.log("✅ Local SQLite database initialised.");
     }
+
+    return _localDb!;
 }
 
-if (!db) {
-    console.error("❌ CRITICAL: global 'db' object is undefined! NextAuth will fail.");
-} else {
-    console.log("✅ Database initialized successfully for environment:", process.env.NODE_ENV || "development");
-}
+// Proxy so callers can use `db` as before — the real instance is resolved
+// per property access (i.e. inside the request handler, not at module init).
+export const db = new Proxy({} as DbInstance, {
+    get(_, prop) {
+        return (getDb() as any)[prop];
+    },
+}) as DbInstance;
 
-export { db };
 export * from "./schema";
-
